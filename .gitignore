@@ -1,4 +1,1 @@
 .venv
-geo_data_generator/cache
-geo_data_generator/__pycache__
-geo_data_generator/models/__pycache__

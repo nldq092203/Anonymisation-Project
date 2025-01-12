@@ -157,7 +157,7 @@ class Survey:
                         # Record data
                         survey_data.append({
                             "person_id": person.unique_id,
-                            "timestamp": random_time.isoformat(),
+                            "timestamp": random_time.strftime("%Y-%m-%d %H:%M:%S"),
                             "latitude": position[0],
                             "longitude": position[1],
                         })
@@ -180,17 +180,3 @@ class Survey:
 
         print(f"Survey data saved to {file_path}")
 
-
-# Example Usage
-if __name__ == "__main__":
-    # Define survey parameters
-    city_name = "Ho Chi Minh City"  # City name to dynamically determine center point
-    radius = 10000  # 10 km radius
-    number_of_people = 5
-    start_date = datetime(2025, 1, 1)  # Start of the survey
-    end_date = datetime(2025, 1, 31)  # End of the survey
-
-    # Create and run the survey
-    survey = Survey(city_name, radius, number_of_people, start_date, end_date)
-    survey_data = survey.simulate()  
-    survey.save_to_csv(survey_data, "survey_results.csv")

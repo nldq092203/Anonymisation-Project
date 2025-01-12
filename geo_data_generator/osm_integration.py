@@ -2,9 +2,11 @@ import osmnx as ox
 import networkx as nx
 from geopy.distance import geodesic
 import geopandas as gpd
-
+import os
+import pickle
+import hashlib
 class OSMManager:
-    def __init__(self, center_point, radius=10000, network_type="drive"):
+    def __init__(self, center_point, radius=10000, network_type="drive", cache_dir="graph_cache"):
         """
         Initialize the OSMManager with a graph for a specified center point and radius.
         :param center_point: (latitude, longitude) of the center point.
@@ -14,6 +16,11 @@ class OSMManager:
         self.center_point = center_point
         self.radius = radius
         self.network_type = network_type
+
+        self.cache_dir = cache_dir
+
+        # Ensure the cache directory exists
+        os.makedirs(self.cache_dir, exist_ok=True)
 
         # Initialize attributes to store data
         self.graph = None
@@ -38,10 +45,36 @@ class OSMManager:
         # Scan all locations
         self.scan_all_locations()
 
+    def _generate_cache_key(self):
+        """
+        Generate a unique cache key for the current center point and radius.
+        :return: A unique hash string.
+        """
+        key_data = f"{self.center_point}-{self.radius}-{self.network_type}"
+        return hashlib.md5(key_data.encode()).hexdigest()
+    
     def load_graph(self):
-        """Load the graph for the specified center point and radius."""
-        print(f"Loading graph for center point {self.center_point} with radius {self.radius} meters...")
-        self.graph = ox.graph_from_point(self.center_point, dist=self.radius, network_type=self.network_type, simplify=True)
+        """
+        Load the graph for the specified center point and radius.
+        Reuse cached graph if available.
+        """
+        cache_key = self._generate_cache_key()
+        cache_path = os.path.join(self.cache_dir, f"{cache_key}.pkl")
+
+        if os.path.exists(cache_path):
+            print(f"Loading graph from cache: {cache_path}")
+            with open(cache_path, "rb") as f:
+                self.graph = pickle.load(f)
+        else:
+            print(f"Generating graph for center point {self.center_point} with radius {self.radius} meters...")
+            self.graph = ox.graph_from_point(
+                self.center_point, dist=self.radius, network_type=self.network_type, simplify=True
+            )
+            with open(cache_path, "wb") as f:
+                pickle.dump(self.graph, f)
+            print(f"Graph saved to cache: {cache_path}")
+
+        # Convert the graph to GeoDataFrames
         self.nodes, self.edges = ox.graph_to_gdfs(self.graph)
 
     def get_nearest_node(self, point):
