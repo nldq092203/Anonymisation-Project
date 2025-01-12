@@ -26,16 +26,15 @@ class OSMManager:
         self.graph = None
         self.nodes = None
         self.edges = None
-        self.route = None
         self.locations = {
             "schools": None,
             "workplaces": None,
             "parks": None,
             "markets": None,
-            "healthcare": None,
+            "healthcares": None,
             "play_areas": None,
             "gyms": None,
-            "residential": None
+            "residentals": None
         }
 
         # Load the graph
@@ -137,15 +136,15 @@ class OSMManager:
             print(f"No {category} found in the specified area.")
         return locations
 
-    # def scan_residential(self):
+    # def scan_residentals(self):
     #     """
-    #     Scan for residential areas using the generalized scan_locations method.
-    #     :return: GeoDataFrame containing residential areas.
+    #     Scan for residentals areas using the generalized scan_locations method.
+    #     :return: GeoDataFrame containing residentals areas.
     #     """
-    #     # Define OSM tags for residential areas
-    #     tags = {"landuse": "residential"}
+    #     # Define OSM tags for residentals areas
+    #     tags = {"landuse": "residentals"}
 
-    #     return self.scan_locations("residential", tags)
+    #     return self.scan_locations("residentals", tags)
     
     # def scan_parks(self):
     #     return self.scan_locations("parks", {"leisure": "park"})
@@ -159,8 +158,8 @@ class OSMManager:
     # def scan_markets(self):
     #     return self.scan_locations("markets", {"shop": "supermarket"})
 
-    # def scan_healthcare(self):
-    #     return self.scan_locations("healthcare", {"amenity": ["hospital", "clinic", "pharmacy"]})
+    # def scan_healthcares(self):
+    #     return self.scan_locations("healthcares", {"amenity": ["hospital", "clinic", "pharmacy"]})
 
     # def scan_play_areas(self):
     #     return self.scan_locations("play_areas", {"leisure": "playground"})
@@ -171,12 +170,12 @@ class OSMManager:
     def scan_all_locations(self):
         """Scan and store locations for all predefined categories."""
         categories = {
-            "residential": {"landuse": "residential"},
+            "residentals": {"landuse": "residentals"},
             "parks": {"leisure": "park"},
             "schools": {"amenity": "school"},
             "workplaces": {"office": True, "industrial": True},
             "markets": {"shop": "supermarket"},
-            "healthcare": {"amenity": ["hospital", "clinic", "pharmacy"]},
+            "healthcares": {"amenity": ["hospital", "clinic", "pharmacy"]},
             "play_areas": {"leisure": "playground"},
             "gyms": {"leisure": "fitness_centre"}
         }

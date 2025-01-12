@@ -127,6 +127,27 @@ class Survey:
     #     return survey_data
 
     def simulate(self, max_records_per_day=5):
+        """
+        Simulate random daily activity for each person in the survey.
+
+        This method generates realistic movement data for each person over the survey period.
+        - Each person is assigned a probability of being active on a given day.
+        - If active, a random number of activity records are generated for that day, 
+          based on the person's type (adult, child, older).
+        - Each record includes a random timestamp within the day and the person's position 
+          at that time.
+
+        Parameters:
+        - max_records_per_day: Maximum number of activity records a person can generate in a day.
+
+        Returns:
+        - survey_data: A list of dictionaries containing the following keys:
+            - "person_id": Unique identifier for the person.
+            - "timestamp": Randomly generated timestamp (YYYY-MM-DD HH:MM:SS format).
+            - "latitude": Latitude of the person's position at the timestamp.
+            - "longitude": Longitude of the person's position at the timestamp.
+        """
+        
         survey_data = []
         current_date = self.start_date
 
