@@ -2,9 +2,9 @@ import random
 import csv
 from datetime import datetime, timedelta
 from geopy.geocoders import Nominatim
-from models.Adult import Adult
-from models.Child import Child
-from models.Older import Older
+from models.adult import Adult
+from models.child import Child
+from models.older import Older
 from osm_integration import OSMManager
 
 
@@ -70,9 +70,11 @@ class Survey:
         for i in range(num_children):
             person = Child(
                 unique_id=i,
-                type="child",
-                speed=random.uniform(4.2, 5.5),  # Bus speed: ~15-20 km/h
-                osm_manager=self.osm_manager
+                person_type="child",
+                # speed=random.uniform(4.2, 5.5),  # Bus speed: ~15-20 km/h
+                speed=random.uniform(0.8, 1.4),  # Walking speed: ~3-5 km/h
+                osm_manager=self.osm_manager,
+                predefined_waypoints={}
             )
             people.append(person)
 
@@ -80,9 +82,10 @@ class Survey:
         for i in range(num_adults):
             person = Adult(
                 unique_id=num_children + i,
-                type="adult",
+                person_type="adult",
                 speed=random.uniform(11.1, 16.7),  # Car speed: ~40-60 km/h
-                osm_manager=self.osm_manager
+                osm_manager=self.osm_manager,
+                predefined_waypoints={}
             )
             people.append(person)
 
@@ -90,9 +93,10 @@ class Survey:
         for i in range(num_older):
             person = Older(
                 unique_id=num_children + num_adults + i,
-                type="older",
+                person_type="older",
                 speed=random.uniform(0.8, 1.4),  # Walking speed: ~3-5 km/h
-                osm_manager=self.osm_manager
+                osm_manager=self.osm_manager,
+                predefined_waypoints={}
             )
             people.append(person)
 
@@ -114,7 +118,7 @@ class Survey:
     #             )
 
     #             # Determine the person's position at the timestamp
-    #             position = person.get_position_at_time(random_timestamp)
+    #             position, log = person.get_position_at_time(random_timestamp)
 
     #             # Record data
     #             survey_data.append({
@@ -128,35 +132,27 @@ class Survey:
 
     def simulate(self, max_records_per_day=5):
         """
-        Simulate random daily activity for each person in the survey.
-
-        This method generates realistic movement data for each person over the survey period.
-        - Each person is assigned a probability of being active on a given day.
-        - If active, a random number of activity records are generated for that day, 
-          based on the person's type (adult, child, older).
-        - Each record includes a random timestamp within the day and the person's position 
-          at that time.
+        Simulate random daily activity for each person in the survey with day/night activity patterns.
 
         Parameters:
         - max_records_per_day: Maximum number of activity records a person can generate in a day.
 
         Returns:
-        - survey_data: A list of dictionaries containing the following keys:
-            - "person_id": Unique identifier for the person.
-            - "timestamp": Randomly generated timestamp (YYYY-MM-DD HH:MM:SS format).
-            - "latitude": Latitude of the person's position at the timestamp.
-            - "longitude": Longitude of the person's position at the timestamp.
+        - survey_data: A list of dictionaries containing activity records.
         """
-        
         survey_data = []
         current_date = self.start_date
+
+        # Define activity periods (24-hour format)
+        active_hours = range(7, 22)  # More active between 7 AM and 10 PM
+        inactive_hours = list(set(range(24)) - set(active_hours))  # Less active between 10 PM and 7 AM
 
         while current_date <= self.end_date:
             for person in self.people:
                 # Set realistic parameters based on person type
                 if person.type == "adult":
                     activity_probability = 0.8  # Adults are active most days
-                    max_records = random.randint(2, max_records_per_day)  # Higher daily variability
+                    max_records = random.randint(2, max_records_per_day)
                 elif person.type == "child":
                     activity_probability = 0.6  # Children may have fewer active days
                     max_records = random.randint(1, max_records_per_day)
@@ -167,13 +163,22 @@ class Survey:
                 # Randomly decide if the person is active on this day
                 if random.random() < activity_probability:
                     for _ in range(max_records):
-                        # Generate a random time within the current day
+                        # Assign higher weight to active hours
+                        is_active_hour = random.random() < 0.8  # 80% chance of being during active hours
+                        if is_active_hour:
+                            hour = random.choice(active_hours)
+                        else:
+                            hour = random.choice(inactive_hours)
+
+                        # Generate a random time within the selected hour
                         random_time = current_date + timedelta(
-                            seconds=random.randint(0, 86399)  # Random seconds in a day
+                            hours=hour,
+                            minutes=random.randint(0, 59),
+                            seconds=random.randint(0, 59)
                         )
 
                         # Determine the person's position at the timestamp
-                        position = person.get_position_at_time(random_time)
+                        position, log = person.get_position_at_time(random_time)
 
                         # Record data
                         survey_data.append({

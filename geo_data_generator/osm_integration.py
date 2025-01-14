@@ -31,10 +31,10 @@ class OSMManager:
             "workplaces": None,
             "parks": None,
             "markets": None,
-            "healthcares": None,
+            "healthcare": None,
             "play_areas": None,
             "gyms": None,
-            "residentals": None
+            "residential": None
         }
 
         # Load the graph
@@ -138,13 +138,13 @@ class OSMManager:
 
     # def scan_residentals(self):
     #     """
-    #     Scan for residentals areas using the generalized scan_locations method.
-    #     :return: GeoDataFrame containing residentals areas.
+    #     Scan for residential areas using the generalized scan_locations method.
+    #     :return: GeoDataFrame containing residential areas.
     #     """
-    #     # Define OSM tags for residentals areas
-    #     tags = {"landuse": "residentals"}
+    #     # Define OSM tags for residential areas
+    #     tags = {"landuse": "residential"}
 
-    #     return self.scan_locations("residentals", tags)
+    #     return self.scan_locations("residential", tags)
     
     # def scan_parks(self):
     #     return self.scan_locations("parks", {"leisure": "park"})
@@ -158,8 +158,8 @@ class OSMManager:
     # def scan_markets(self):
     #     return self.scan_locations("markets", {"shop": "supermarket"})
 
-    # def scan_healthcares(self):
-    #     return self.scan_locations("healthcares", {"amenity": ["hospital", "clinic", "pharmacy"]})
+    # def scan_healthcare(self):
+    #     return self.scan_locations("healthcare", {"amenity": ["hospital", "clinic", "pharmacy"]})
 
     # def scan_play_areas(self):
     #     return self.scan_locations("play_areas", {"leisure": "playground"})
@@ -170,12 +170,12 @@ class OSMManager:
     def scan_all_locations(self):
         """Scan and store locations for all predefined categories."""
         categories = {
-            "residentals": {"landuse": "residentals"},
+            "residential": {"landuse": "residential"},
             "parks": {"leisure": "park"},
             "schools": {"amenity": "school"},
-            "workplaces": {"office": True, "industrial": True},
+            "workplaces": {"office": True, "landuse": "industrial"},
             "markets": {"shop": "supermarket"},
-            "healthcares": {"amenity": ["hospital", "clinic", "pharmacy"]},
+            "healthcare": {"amenity": ["hospital", "clinic", "pharmacy"]},
             "play_areas": {"leisure": "playground"},
             "gyms": {"leisure": "fitness_centre"}
         }
@@ -197,8 +197,14 @@ class OSMManager:
             depart_node = self.get_nearest_node(depart)
             arrival_node = self.get_nearest_node(arrival)
 
-            # Compute the shortest path between these nodes
-            route_nodes = nx.shortest_path(self.graph, depart_node, arrival_node, weight="length")
+            # Try finding the shortest path directly
+            try:
+                route_nodes = nx.shortest_path(self.graph, depart_node, arrival_node, weight="length")
+            except nx.NetworkXNoPath:
+                # Handle the case where no direct path exists
+                route_nodes, depart_node, arrival_node = self._handle_no_path(depart, arrival, depart_node, arrival_node)
+                if not route_nodes:
+                    return self._straight_line_fallback(depart, arrival, speed_m_s)
 
             # Calculate the total distance of the route
             distance_m = self.route_distance(route_nodes)
@@ -217,6 +223,69 @@ class OSMManager:
 
             print(f"Trajectory built from {depart} to {arrival} with {len(route_nodes)} nodes.")
             return trajectory_details
+
         except Exception as e:
-            print(f"Error building trajectory from {depart} to {arrival}: {e}")
-            return None
+            print(f"Unexpected error building trajectory from {depart} to {arrival}: {e}")
+            # Fallback to straight line in case of any unexpected error
+            return self._straight_line_fallback(depart, arrival, speed_m_s)
+
+    def _handle_no_path(self, depart, arrival, depart_node, arrival_node):
+        """
+        Handle cases where no direct path exists between two nodes by expanding search space.
+        :param depart: Departure coordinates (latitude, longitude).
+        :param arrival: Arrival coordinates (latitude, longitude).
+        :param depart_node: Closest graph node to the departure point.
+        :param arrival_node: Closest graph node to the arrival point.
+        :return: Tuple (route_nodes, updated_depart_node, updated_arrival_node).
+        """
+        nearby_depart_nodes = self.get_nearby_nodes(depart_node)
+        nearby_arrival_nodes = self.get_nearby_nodes(arrival_node)
+
+        # Try finding a path using nearby nodes
+        for d_node in nearby_depart_nodes:
+            for a_node in nearby_arrival_nodes:
+                try:
+                    route_nodes = nx.shortest_path(self.graph, d_node, a_node, weight="length")
+                    print(f"Path found between nearby nodes: {d_node} → {a_node}")
+                    return route_nodes, d_node, a_node
+                except nx.NetworkXNoPath:
+                    continue
+
+        # If no path found, return None
+        print(f"No path found between nearby nodes for {depart} to {arrival}.")
+        return None, None, None
+
+    def _straight_line_fallback(self, depart, arrival, speed_m_s):
+        """
+        Fallback to a straight-line trajectory if no valid path exists.
+        :param depart: Tuple (latitude, longitude) of the departure point.
+        :param arrival: Tuple (latitude, longitude) of the arrival point.
+        :param speed_m_s: Average speed in meters/second.
+        :return: Dictionary containing fallback trajectory details.
+        """
+        distance_m = self.straight_line_distance(depart, arrival)
+        travel_time_s = distance_m / speed_m_s
+        print(f"Fallback: Using straight line from {depart} to {arrival}.")
+        return {
+            "start_waypoint": depart,
+            "end_waypoint": arrival,
+            "route_nodes": [depart, arrival],  # Represent as just the points
+            "distance_m": distance_m,
+            "travel_time_s": travel_time_s,
+        }
+    
+
+    def get_nearby_nodes(self, node, radius=50):
+        """
+        Get nearby nodes to the given node within a specified radius.
+        :param node: The node ID to find nearby nodes for.
+        :param radius: The search radius in meters.
+        :return: List of nearby node IDs.
+        """
+        x, y = self.graph.nodes[node]["x"], self.graph.nodes[node]["y"]
+        nearby_nodes = [
+            n for n, attrs in self.graph.nodes(data=True)
+            if self.straight_line_distance((y, x), (attrs["y"], attrs["x"])) <= radius
+        ]
+        return nearby_nodes
+
