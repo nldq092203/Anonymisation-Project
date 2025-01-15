@@ -1,6 +1,6 @@
 
 from .waypoint_manager import AutoWaypointAssigner, ManualWaypointAssigner
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 
 class Person:
     def __init__(self, unique_id, person_type, speed, osm_manager, predefined_waypoints={}, schedule=[], detail_schedule=[], mode="automatic"):
@@ -31,9 +31,9 @@ class Person:
         # Assign waypoints based on the mode
         self.assign_waypoints()
 
-
+        
         # Build schedule
-        self.schedule = self.build_general_schedule()
+        self.build_general_schedule()
 
         # Build detailed trajectories
         self.detail_schedule = detail_schedule if detail_schedule else self.build_trajectories()
@@ -140,6 +140,15 @@ class Person:
                 end_waypoint = movement.get("end_waypoint")
                 start_time_str = movement.get("start_time")
 
+                # Convert start_time to string if it is not already
+                if isinstance(start_time_str, time):
+                    start_time_str = start_time_str.strftime("%H:%M:%S")
+                else:
+                    start_time_str = start_time_str
+                # Remove seconds from time if present
+                if len(start_time_str.split(":")) == 3:
+                    start_time_str = ":".join(start_time_str.split(":")[:2])  # Convert HH:MM:SS to HH:MM
+
                 # Validate waypoints
                 if start_waypoint not in self.waypoints or not self.waypoints[start_waypoint]:
                     print(f"Invalid or unassigned start waypoint: {start_waypoint}. Skipping movement.")
@@ -170,6 +179,7 @@ class Person:
             print("\nFinal Schedule:")
             for movement in self.schedule:
                 print(f"  {movement['start_time']}: {movement['start_waypoint']} → {movement['end_waypoint']}")
+
             
 
     def build_trajectories(self):
@@ -177,7 +187,6 @@ class Person:
         Compute and store the trajectory for each movement in the schedule, using only time objects.
         """
         enriched_schedule = []
-
         for movement in self.schedule:
             start_time = movement["start_time"]
 
