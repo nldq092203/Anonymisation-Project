@@ -15,7 +15,7 @@ Geo Data Generator is a Python tool that simulates human activity and movement i
     - Children: Travel to school, parks, etc., usually by bus.
     - Adults: Commute to workplaces, gyms, markets, usually by car.
     - Older individuals: Walk to healthcare centers, parks, etc.
-- **Trajectory Calculation**: Calculate the shortest path and travel time between waypoints using network graphs.
+- **Trajectory Calculation and Construction**: Calculate shortest paths and build realistic trajectories using network graphs.
 - **Activity Simulation**: Generate realistic daily activity data for a survey period, including timestamps and positions.
 - **Data Export**: Save simulated data to CSV for further analysis.
 - **Customizable Modes**:

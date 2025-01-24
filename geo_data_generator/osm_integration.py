@@ -196,6 +196,7 @@ class OSMManager:
             # Get the nearest nodes for departure and arrival points
             depart_node = self.get_nearest_node(depart)
             arrival_node = self.get_nearest_node(arrival)
+            print(f"Depart Node: {depart_node}, Arrival_node: {arrival_node}")
 
             # Try finding the shortest path directly
             try:
@@ -204,7 +205,7 @@ class OSMManager:
                 # Handle the case where no direct path exists
                 route_nodes, depart_node, arrival_node = self._handle_no_path(depart, arrival, depart_node, arrival_node)
                 if not route_nodes:
-                    return self._straight_line_fallback(depart, arrival, speed_m_s)
+                    return self._straight_line_fallback(depart_node , arrival_node, speed_m_s)
 
             # Calculate the total distance of the route
             distance_m = self.route_distance(route_nodes)
@@ -240,6 +241,7 @@ class OSMManager:
         """
         nearby_depart_nodes = self.get_nearby_nodes(depart_node)
         nearby_arrival_nodes = self.get_nearby_nodes(arrival_node)
+        print(f"Nearby_depart_node: {nearby_depart_nodes}, Nearby_arrival_nodes: {nearby_arrival_nodes}")
 
         # Try finding a path using nearby nodes
         for d_node in nearby_depart_nodes:
@@ -255,21 +257,33 @@ class OSMManager:
         print(f"No path found between nearby nodes for {depart} to {arrival}.")
         return None, None, None
 
-    def _straight_line_fallback(self, depart, arrival, speed_m_s):
+    def _straight_line_fallback(self, start, end, speed_m_s):
         """
         Fallback to a straight-line trajectory if no valid path exists.
-        :param depart: Tuple (latitude, longitude) of the departure point.
-        :param arrival: Tuple (latitude, longitude) of the arrival point.
+        :param start: Can be a tuple (latitude, longitude) or a node ID.
+        :param end: Can be a tuple (latitude, longitude) or a node ID.
         :param speed_m_s: Average speed in meters/second.
         :return: Dictionary containing fallback trajectory details.
         """
-        distance_m = self.straight_line_distance(depart, arrival)
+        # Resolve node IDs to coordinates if necessary
+        if isinstance(start, (int, str)):  # Node ID
+            start_coords = (self.osm_manager.nodes.loc[start, "y"], self.osm_manager.nodes.loc[start, "x"])
+        else:
+            start_coords = start  # Already a coordinate
+
+        if isinstance(end, (int, str)):  # Node ID
+            end_coords = (self.osm_manager.nodes.loc[end, "y"], self.osm_manager.nodes.loc[end, "x"])
+        else:
+            end_coords = end  # Already a coordinate
+
+        distance_m = self.straight_line_distance(start_coords, end_coords)
         travel_time_s = distance_m / speed_m_s
-        print(f"Fallback: Using straight line from {depart} to {arrival}.")
+
+        print(f"Fallback: Using straight line from {start_coords} to {end_coords}.")
         return {
-            "start_waypoint": depart,
-            "end_waypoint": arrival,
-            "route_nodes": [depart, arrival],  # Represent as just the points
+            "start_waypoint": start_coords,
+            "end_waypoint": end_coords,
+            "route_nodes": [start_coords, end_coords],  # Represent as just the points
             "distance_m": distance_m,
             "travel_time_s": travel_time_s,
         }
